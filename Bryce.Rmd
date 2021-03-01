@@ -5,3 +5,63 @@ date: "2/24/2021"
 output: word_document
 ---
 
+Notes:
+- Categorical Variables: waterfront (0-1), view (0-1), condition (1-5), grade (5-12)
+- Quantitative Variables: bedrooms, bathrooms, sqft. sqftlot, floors, sqftabove, sqftbasement, *yrbuilt*, *yrrenovated*
+- Exclude: ID
+- sqft_living highest correlation with price
+
+
+
+
+*{variable}* = unsure
+```{r}
+df <- read.csv('Seattle.csv')
+attach(df)
+summary(df)
+head(df,4)
+```
+#Changing the date value
+```{r}
+library(lubridate)
+df$date <- ymd(substr(date,1,nchar(date) - 7))
+head(df,4)
+```
+#Scatterplots
+```{r}
+par(mfrow = c(1,2))
+plot(df$date, df$price, xlab = "Date", ylab = "Price")
+plot(df$bedrooms, df$price, xlab = "bedrooms", ylab = "price")
+```
+```{r}
+par(mfrow = c(1,2))
+plot(df$bathrooms, df$price, xlab = "bathrooms", ylab = "price")
+plot(df$sqft_living, df$price, xlab = "sqft", ylab = "price")
+```
+```{r}
+par(mfrow = c(1,2))
+plot(df$sqft_lot, df$price, xlab = "Lot Square Footage", ylab = "Price")
+plot(df$floors, df$price, xlab = "# of Floors", ylab = "Price")
+```
+```{r}
+par(mfrow = c(1,2))
+plot(df$condition, df$price, xlab = "Condition", ylab = "Price")
+plot(df$grade, df$price, xlab = "Grade", ylab = "Price")
+```
+
+```{r}
+par(mfrow = c(1,2))
+plot(df$sqft_above, df$price, xlab = "sqft_above", ylab = "Price")
+plot(df$sqft_basement, df$price, xlab = "sqft_basement", ylab = "Price")
+```
+
+```{r}
+par(mfrow = c(1,2))
+plot(df$yr_built, df$price, xlab = "Year Built", ylab = "Price")
+plot(df$yr_renovated, df$price, xlab = "Year Renovated", ylab = "Price")
+```
+#Correlations
+```{r}
+cor(df[,c(3,4,5,6,7,8,13)])
+```
+
