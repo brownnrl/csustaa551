@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: pdf_document
+author: "Nelson Brown and Bryce Smith"
+---
+
+```{r, include=FALSE}
+library(ggplot2)
+library(ggthemes)
+library(lubridate)
+library(stargazer) # Used for latex tables to summarize the data and models
+```
+
+# Introduction
+
+
+# Summary Statistics and Graphics
+
+## Quantitative Values
+
+```{r, echo=FALSE, results='hide'}
+# Read the Data
+df <- read.csv('Seattle.csv', strip.white = TRUE, stringsAsFactors = FALSE)
+quant.columns <- c(3,6,7,13,14)
+df$condition <- as.factor(df$condition)
+df$grade <- as.factor(df$grade)
+
+# Clean the Data
+df$date <- ymd(substr(df$date,1,nchar(df$date) - 7)) # Convert string to date object
+```
+
+```{r, echo=FALSE, results='asis'}
+# Print head of initial dataframe
+stargazer(df[1:4,quant.columns], rownames=FALSE, summary=FALSE, header=FALSE, title="First Four Rows for Quantitative Values on Seattlle Housing Dataframe")
+```
+
+```{r, echo=FALSE, results='asis'}
+# Summarize initial dataframe
+stargazer(df[,quant.columns],header=FALSE, title="Summary Statistics for Quantitative Values on Seattlle Housing Dataframe")
+```
+
+## Discrete and Categorical Values
+
+```{r, echo=FALSE}
+ggplot(df, aes(x=condition, y=price, fill=condition)) +
+  theme_solarized(light = TRUE) +
+  scale_colour_solarized("red") +
+  geom_violin(aes(color=condition)) +
+  geom_boxplot(width=0.1) +
+  ggtitle("Price by Condition") +
+  xlab("Condition") +
+  ylab("Price") +
+  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
+
+```
+
+
+```{r, echo=FALSE}
+ggplot(df, aes(x=grade, y=price, fill=grade)) +
+  theme_solarized(light = TRUE) +
+  scale_colour_solarized("red") +
+  geom_violin(aes(color=grade)) +
+  geom_boxplot(width=0.1) +
+  ggtitle("Price by Grade") +
+  xlab("Grade") +
+  ylab("Price") +
+  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
+```
+
+# Analysis
+
+# Results and Conclusions
+
+
+
+\newpage
+
+# Appendix: All Code for This Report
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
