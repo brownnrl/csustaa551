@@ -16,8 +16,8 @@ Notes:
 
 *{variable}* = unsure
 ```{r}
-df <- read.csv('Seattle.csv')
-attach(df)
+df_mod <- read.csv('Seattle.csv')
+attach(df_mod)
 summary(df)
 head(df,4)
 ```
@@ -172,5 +172,24 @@ ggpairs(df[quant.columns],title = "Correlogram of Quant. Columns")
 ```{r}
 cor(bedrooms, sqft_living)
 ```
+
+```{r}
+lm_simp <- lm(price ~ sqft_living, data = df)
+summary(lm_simp)
+```
+
+```{r}
+lm_2 <- lm(price ~ sqft_living + basement, data = df)
+summary(lm_2)
+lm_6 <- lm(price ~ sqft_living + bedrooms + condition, data = df)
+summary(lm_6)
+```
+```{r}
+df$grade <- as.numeric(df$grade)
+lm_top <- lm(price ~ sqft_living + waterfront + grade + bedrooms, data = df)
+summary(lm_top)
+anova(lm_top)
+```
+
 
 

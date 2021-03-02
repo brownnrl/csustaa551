@@ -1,0 +1,122 @@
+---
+title: "Bryce2"
+author: "Bryce Smith"
+date: "3/2/2021"
+output: word_document
+---
+
+```{r}
+library(lubridate)
+library(GGally)
+df_mod1 <- read.csv('Seattle.csv')
+df_mod1$date <- ymd(substr(date,1,nchar(date) - 7))
+df_mod1$basement <- ifelse(df_mod1$sqft_basement == 0, 'No Basement','Basement')
+head(df_mod1,3)
+```
+
+```{r fig1, fig.height = 5, fig.width=5}
+quant.columns <- c(3, 4, 5, 6,7, 8, 11, 12, 13, 14)
+ggpairs(df_mod1[quant.columns],title = "Correlogram of Quant. Columns")
+```
+#Price is right skewed. Placing a log transform on it to reduce the skewness.
+
+```{r}
+plot(density(log(df_mod1$price)))
+```
+#Helps with the skewness of price. Going to proceed.
+```{r fig1, fig.height = 4, fig.width=5}
+df_mod1$price <- log(df_mod1$price)
+ggpairs(df_mod1[quant.columns],title = "Correlogram of Quant. Columns")
+```
+#Correlations increased between price and bedrooms, bathrooms, sqft_living, floors, grade, sqft_above, sqft_basement
+#Correlation decreased between price and condition
+
+#Fitting Quantitative Variables one at a time based on correlation.
+
+```{r}
+lm_1 <- lm(df_mod1$price ~ sqft_living, data = df_mod1)
+summary(lm_1)
+```
+
+#sqft_living is significant and helpful
+
+#Adding Grade Scores to the model
+```{r}
+lm_2 <- lm(df_mod1$price ~ sqft_living + grade, data = df_mod1)
+summary(lm_2)
+```
+#Both grade and sqft_living, very significant, 
+
+#Going to add bathrooms to the model because sqft_above will definitely be very correlated to sqft_living.
+```{r}
+lm_3 <- lm(df_mod1$price ~ sqft_living + grade + bathrooms, data = df_mod1)
+summary(lm_3)
+```
+#R-squared increased but bathrooms for the added last t-test has a high p-value, therefore, should not be added to a model with sqft_living and grade in there.
+
+#Going to take out bathrooms and add in the indicator variables, waterfront, and the basement.
+
+```{r}
+lm_4 <- lm(df_mod1$price ~ sqft_living + grade + waterfront, data = df_mod1)
+summary(lm_4)
+```
+#Increase in R^2
+
+#Trying view instead of waterfront
+```{r}
+lm_5 <- lm(df_mod1$price ~ sqft_living + grade + view, data = df_mod1)
+summary(lm_5)
+
+```
+
+#Trying Basement with view
+```{r}
+lm_6 <- lm(df_mod1$price ~ sqft_living + grade + view + basement, data = df_mod1)
+summary(lm_6)
+```
+#Significant predictors, R^2 0.6081 with both view and basement indicators. 
+
+#Looking at the residual plots for the full model lm_6
+
+```{r}
+par(mfrow = c(1,3))
+plot(lm_6,c(1,2,4))
+```
+#Doesn't look too bad. Residuals v. Fitted are equally dispersed on either side of zero. QQplot is fairly linear. Cook's distance shows 244 could be concerning.
+
+#Lets look at the residuals plotting against the predictors
+```{r}
+par(mfrow = c(2,2))
+plot(sqft_living ,lm_6$residuals, xlab = "sqft_living", ylab = "residuals")
+plot(grade ,lm_6$residuals, xlab = "grade", ylab = "residuals")
+plot(view ,lm_6$residuals, xlab = "view", ylab = "residuals")
+```
+
+#Sparsity on the right, going to try transformation
+
+
+#First plotting responses vs. fitted responses
+
+```{r}
+plot(lm_6$fitted.values, df_mod1$price)
+abline(a = 0, b = 1)
+```
+
+#Collinearity for lm_6
+```{r}
+library(car)
+vif(lm_6)
+```
+#Collinearity VIF values look good.
+
+
+#Trying log(sqft_living)
+```{r}
+lm_7 <- lm(df_mod1$price ~ log(sqft_living) + grade + view + basement, data = df_mod1)
+summary(lm_7)
+```
+#Decrease in R-squared.
+
+
+
+
