@@ -65,3 +65,112 @@ plot(df$yr_renovated, df$price, xlab = "Year Renovated", ylab = "Price")
 cor(df[,c(3,4,5,6,7,8,13)])
 ```
 
+```{r}
+df$bedrooms <- as.factor(df$bedrooms)
+
+ggplot(df, aes(x=bedrooms, y=price, fill=bedrooms)) +
+  theme_solarized(light = TRUE) +
+  scale_colour_solarized("red") +
+  geom_violin(aes(color=bedrooms)) +
+  geom_boxplot(width=0.1) +
+  ggtitle("Price by Number of Bedrooms") +
+  xlab("Number of Bedrooms") +
+  ylab("Price") +
+  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
+
+```
+```{r}
+df$floors <- as.factor(df$floors)
+
+ggplot(df, aes(x=floors, y=price, fill=floors)) +
+  theme_solarized(light = TRUE) +
+  scale_colour_solarized("red") +
+  geom_violin(aes(color=floors)) +
+  geom_boxplot(width=0.1) +
+  ggtitle("Price by Number of Floors") +
+  xlab("Number of Floors") +
+  ylab("Price") +
+  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
+
+```
+
+#Binning bathrooms
+```{r}
+library(tidyverse)
+library(dplyr)
+library(scales)
+tags <- c("[0-1]", "[1-2]","[2-3]", "[3-4]", "[4-6]")
+v <- df %>% select(price, bathrooms)
+vgroup <- as_tibble(v) %>% mutate(tag = case_when(
+  bathrooms == 0.25|bathrooms == 0.5|bathrooms == 0.75|bathrooms == 1.00 ~ tags[1],
+  bathrooms == 1.25|bathrooms == 1.5|bathrooms == 1.75|bathrooms == 2.00 ~ tags[2],
+  bathrooms == 2.25|bathrooms == 2.5|bathrooms == 2.75|bathrooms == 3.00 ~ tags[3],
+  bathrooms == 3.25|bathrooms == 3.5|bathrooms == 3.75|bathrooms == 4.00 ~ tags[4],
+  bathrooms > 4.00 & bathrooms <= 6.00 ~ tags[5],
+))
+summary(vgroup)
+```
+
+
+#Bins
+```{r}
+vgroup$tag <- factor(vgroup$tag, levels = tags, ordered = FALSE)
+summary(vgroup$tag)
+```
+
+
+#Jitterplots with overlying boxplot
+```{r}
+ggplot(data = vgroup, mapping = aes(x=tag,y=price)) + 
+  geom_jitter(aes(color='blue'),alpha=0.2) +
+  geom_boxplot(fill="bisque",color="black",alpha=0.2) + 
+  labs(x='Number of Bathrooms', y= 'Housing Price') +
+  guides(color=FALSE) +
+  theme_minimal() + scale_y_continuous(breaks = c(300000,600000,900000,2000000,4000000,5000000), labels = comma)
+```
+
+```{r}
+ggplot(data = df, mapping = aes(x=factor(floors),y=price)) + 
+  geom_jitter(aes(color='blue'),alpha=0.2) +
+  geom_boxplot(fill="bisque",color="black",alpha=0.2) + 
+  labs(x='Number of Floors', y= 'Housing Price') +
+  guides(color=FALSE)  + scale_y_continuous(breaks = c(300000,600000,900000,2000000,4000000,5000000), labels = comma) + theme_minimal()
+
+
+```
+
+```{r}
+ggplot(data = df, mapping = aes(x=factor(bedrooms),y=price)) + 
+  geom_jitter(aes(color='blue'),alpha=0.2) +
+  geom_boxplot(fill="bisque",color="black",alpha=0.2) + 
+  labs(x='Number of Bedrooms', y= 'Housing Price') +
+  guides(color=FALSE)  + scale_y_continuous(breaks = c(300000,600000,900000,2000000,4000000,5000000), labels = comma) + theme_minimal()
+
+```
+
+#Visualizing observations with a basement vs. no basement
+```{r}
+df$basement <- ifelse(df$sqft_basement == 0, 'No Basement','Basement')
+ggplot(df, aes(x=basement, y=price, fill=basement)) +
+  theme_solarized(light = TRUE) +
+  scale_colour_solarized("red") +
+  geom_violin(aes(color=basement)) +
+  geom_boxplot(width=0.1) +
+  ggtitle("Basement versus No Basement") +
+  ylab("Price") +
+  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
+
+```
+
+```{r}
+library(GGally)
+quant.columns <- c(3,6,7,13,14)
+ggpairs(df[quant.columns],title = "Correlogram of Quant. Columns")
+
+```
+
+```{r}
+cor(bedrooms, sqft_living)
+```
+
+
