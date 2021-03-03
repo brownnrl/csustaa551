@@ -2,72 +2,173 @@
 title: "R Notebook"
 output: pdf_document
 author: "Nelson Brown and Bryce Smith"
+header-includes:
+- \usepackage{pdflscape}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
 ---
+```{r}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
 
 ```{r, include=FALSE}
+library(dplyr)
 library(ggplot2)
+library(grid)
+library(gridExtra)
 library(ggthemes)
 library(lubridate)
+library(GGally)
+library(scales)
 library(stargazer) # Used for latex tables to summarize the data and models
+library(gsubfn)
+
+replace_numbers = function(x, cutoff=4, digits=3, scipen=-7) {
+  ifelse(nchar(x) < cutoff, x, prettyNum(as.numeric(x), digits=digits, scientific=scipen))
+}
+sci_notation <- function(star) {
+  cat(gsubfn("([0-9\\.]+)", ~replace_numbers(x), star), sep='\n')
+}
 ```
 
 # Introduction
 
+```{r, echo=FALSE, results='hide'}
+
+# Read the Data
+df <- read.csv('Seattle.csv', strip.white = TRUE, stringsAsFactors = FALSE)
+# Clean the Data
+df$date <- ymd(substr(df$date,1,nchar(df$date) - 7)) # Convert string to date object
+df$date_built <- as.Date(ISOdate(df$yr_built,1,1))
+df$age_yrs <- as.double(df$date - df$date_built)/365.
+df$last_reno_yrs <- with(df, 
+     ifelse(yr_renovated == 0, 
+            0, 
+            as.double(date-as.Date(ISOdate(df$yr_renovated,1,1)))/365
+            )
+     )
+```
 
 # Summary Statistics and Graphics
+
 
 ## Quantitative Values
 
 ```{r, echo=FALSE, results='hide'}
-# Read the Data
-df <- read.csv('Seattle.csv', strip.white = TRUE, stringsAsFactors = FALSE)
-quant.columns <- c(3,6,7,13,14)
-df$condition <- as.factor(df$condition)
-df$grade <- as.factor(df$grade)
 
-# Clean the Data
-df$date <- ymd(substr(df$date,1,nchar(df$date) - 7)) # Convert string to date object
+# Quantitative Values Section
+quant.columns <- c(4:7,13:14, 18:19, 3)
 ```
 
 ```{r, echo=FALSE, results='asis'}
+
 # Print head of initial dataframe
-stargazer(df[1:4,quant.columns], rownames=FALSE, summary=FALSE, header=FALSE, title="First Four Rows for Quantitative Values on Seattlle Housing Dataframe")
+stargazer(df[1:4,quant.columns[1:5]], 
+          rownames=FALSE, 
+          summary=FALSE, 
+          header=FALSE, 
+          title="First Four Rows for Quantitative Values on Seattlle Housing Dataframe")
 ```
 
 ```{r, echo=FALSE, results='asis'}
-# Summarize initial dataframe
-stargazer(df[,quant.columns],header=FALSE, title="Summary Statistics for Quantitative Values on Seattlle Housing Dataframe")
+
+# Print head of initial dataframe
+stargazer(df[1:4,quant.columns[6:length(quant.columns)]], 
+          rownames=FALSE, 
+          summary=FALSE, 
+          header=FALSE, 
+          title="First Four Rows for Quantitative Values on Seattlle Housing Dataframe")
 ```
+
+```{r, echo=FALSE, results='asis'}
+
+# Summarize initial dataframe
+stargazer(df[,-c(1)],
+          header=FALSE,
+          omit.summary.stat=c('N'),
+          title="Summary Statistics for Values on Seattle Housing Dataframe")
+```
+
+```{r, echo=FALSE, out.height="800px"}
+
+# Quantitative Data Pairs
+ggpairs(df[,quant.columns], progress=FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
 
 ## Discrete and Categorical Values
 
 ```{r, echo=FALSE}
-ggplot(df, aes(x=condition, y=price, fill=condition)) +
-  theme_solarized(light = TRUE) +
-  scale_colour_solarized("red") +
-  geom_violin(aes(color=condition)) +
-  geom_boxplot(width=0.1) +
-  ggtitle("Price by Condition") +
-  xlab("Condition") +
-  ylab("Price") +
-  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
 
+# Discrete and Categorical Values Section
+df$condition <- as.factor(df$condition)
+df$grade <- as.factor(df$grade)
+df$waterfront <- as.factor(df$waterfront)
+df$view <- as.factor(df$view)
+df$bedrooms <- as.factor(df$bedrooms)
+df$floors <- as.factor(df$floors)
+cat.discrete.price.columns <- c(3,9,10,11)
+
+tags <- c("[0-1]", "[1-2]","[2-3]", "[3-4]", "[4-6]")
+bgroup <- as_tibble(select(df, price, bathrooms)) %>% 
+  mutate(tag = case_when(
+  bathrooms == 0.25|bathrooms == 0.5|
+    bathrooms == 0.75|bathrooms == 1.00 ~ tags[1],
+  bathrooms == 1.25|bathrooms == 1.5|
+    bathrooms == 1.75|bathrooms == 2.00 ~ tags[2],
+  bathrooms == 2.25|bathrooms == 2.5|
+    bathrooms == 2.75|bathrooms == 3.00 ~ tags[3],
+  bathrooms == 3.25|bathrooms == 3.5|
+    bathrooms == 3.75|bathrooms == 4.00 ~ tags[4],
+  bathrooms > 4.00 & bathrooms <= 6.00 ~ tags[5],
+))
+df$bath_group <- bgroup$tag
+
+plot_price_by_cat <- function(df, cat_var, cat_var_name) {
+  ggplot(df, aes(x=cat_var, y=price, fill=cat_var)) +
+    scale_colour_solarized("red") +
+    geom_violin(aes(color=cat_var)) +
+    geom_boxplot(width=0.1) +
+    xlab(cat_var_name) +
+    ylab("Price") +
+    scale_y_continuous(labels = scales::dollar_format(scale = .000001, suffix = "M")) +
+    theme(legend.position="none")
+}
+
+p <- plot_price_by_cat(df, df$condition, "Condition")
+q <- plot_price_by_cat(df, df$grade, "Grade")
+r <- plot_price_by_cat(df, df$view, "View")
+s <- plot_price_by_cat(df, df$waterfront, "Waterfront")
+t <- plot_price_by_cat(df, df$bedrooms, "Bedrooms")
+u <- plot_price_by_cat(df, df$bath_group, "Bathrooms")
+v <- plot_price_by_cat(df, df$floors, "Floors")
+
+grid.arrange(grobs=list(p, q, 
+                        r, s),
+             ncol=2,
+             top="Price by Categorical Variable") 
+
+grid.arrange(grobs=list(t, u, 
+                        v),
+             ncol=2,
+             top=NULL) 
 ```
 
-
-```{r, echo=FALSE}
-ggplot(df, aes(x=grade, y=price, fill=grade)) +
-  theme_solarized(light = TRUE) +
-  scale_colour_solarized("red") +
-  geom_violin(aes(color=grade)) +
-  geom_boxplot(width=0.1) +
-  ggtitle("Price by Grade") +
-  xlab("Grade") +
-  ylab("Price") +
-  theme(legend.position="none", plot.title = element_text(hjust = 0.5))
-```
 
 # Analysis
+
+## Initial Model
+
+```{r, echo=FALSE, results='asis'}
+
+# Initial Model
+lm.initial <- lm(price ~ sqft_living, data=df)
+stargazer(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+```
 
 # Results and Conclusions
 
