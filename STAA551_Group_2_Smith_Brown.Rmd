@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 ```{r, include=FALSE}
 library(dplyr)
+library(car)
 library(ggplot2)
 library(grid)
 library(gridExtra)
@@ -21,14 +22,6 @@ library(lubridate)
 library(GGally)
 library(scales)
 library(stargazer) # Used for latex tables to summarize the data and models
-library(gsubfn)
-
-replace_numbers = function(x, cutoff=4, digits=3, scipen=-7) {
-  ifelse(nchar(x) < cutoff, x, prettyNum(as.numeric(x), digits=digits, scientific=scipen))
-}
-sci_notation <- function(star) {
-  cat(gsubfn("([0-9\\.]+)", ~replace_numbers(x), star), sep='\n')
-}
 ```
 
 # Introduction
@@ -45,8 +38,20 @@ df$last_reno_yrs <- with(df,
      ifelse(yr_renovated == 0, 
             0, 
             as.double(date-as.Date(ISOdate(df$yr_renovated,1,1)))/365
-            )
-     )
+          )
+ )
+df$renovated <- as.factor(with(df, 
+     ifelse(yr_renovated > 0, 
+            1, 
+            0
+          )
+ ))
+df$has_basement <- as.factor(with(df, 
+     ifelse(sqft_basement > 0, 
+            1, 
+            0
+          )
+ ))
 ```
 
 # Summary Statistics and Graphics
@@ -103,27 +108,42 @@ ggpairs(df[,quant.columns], progress=FALSE) +
 
 # Discrete and Categorical Values Section
 df$condition <- as.factor(df$condition)
-df$grade <- as.factor(df$grade)
+df$high_grade <- (as_tibble(
+  select(df, grade, price)) %>%
+  mutate(tag=case_when(
+    grade < 10 ~ 0,
+    grade == 10 ~ 10,
+    grade == 11 ~ 11,
+    grade == 12 ~ 12
+    )))$tag
+df$grade.factor <- as.factor(df$grade)
+df$high_grade <- as.factor(df$high_grade)
 df$waterfront <- as.factor(df$waterfront)
 df$view <- as.factor(df$view)
-df$bedrooms <- as.factor(df$bedrooms)
-df$floors <- as.factor(df$floors)
+df$view.factor <- as.factor(df$view)
+#df$bedrooms <- as.factor(df$bedrooms)
+df$multistory <- as.factor(with(df, ifelse(floors==1,0,1)))
+#df$floors <- as.factor(df$floors)
 cat.discrete.price.columns <- c(3,9,10,11)
+summary(df)
 
-tags <- c("[0-1]", "[1-2]","[2-3]", "[3-4]", "[4-6]")
+tags <- c("[0-3]", "[3-4]", "[4-6]")
 bgroup <- as_tibble(select(df, price, bathrooms)) %>% 
   mutate(tag = case_when(
   bathrooms == 0.25|bathrooms == 0.5|
-    bathrooms == 0.75|bathrooms == 1.00 ~ tags[1],
+    bathrooms == 0.75|bathrooms == 1.00 |
   bathrooms == 1.25|bathrooms == 1.5|
-    bathrooms == 1.75|bathrooms == 2.00 ~ tags[2],
+    bathrooms == 1.75|bathrooms == 2.00| 
   bathrooms == 2.25|bathrooms == 2.5|
-    bathrooms == 2.75|bathrooms == 3.00 ~ tags[3],
+    bathrooms == 2.75|bathrooms == 3.00 ~ tags[1],
   bathrooms == 3.25|bathrooms == 3.5|
-    bathrooms == 3.75|bathrooms == 4.00 ~ tags[4],
-  bathrooms > 4.00 & bathrooms <= 6.00 ~ tags[5],
+    bathrooms == 3.75|bathrooms == 4.00 ~ tags[2],
+  bathrooms > 4.00 & bathrooms <= 6.00 ~ tags[3],
 ))
-df$bath_group <- bgroup$tag
+df$bath_group <- as.factor(bgroup$tag)
+df$bed_group <- as.factor(df$bedrooms)
+df$high_bath <- as.factor(with(df, ifelse(bathrooms>4,1,0)))
+df$high_bed <- as.factor(with(df, ifelse(bedrooms>4,1,0)))
 
 plot_price_by_cat <- function(df, cat_var, cat_var_name) {
   ggplot(df, aes(x=cat_var, y=price, fill=cat_var)) +
@@ -131,18 +151,19 @@ plot_price_by_cat <- function(df, cat_var, cat_var_name) {
     geom_violin(aes(color=cat_var)) +
     geom_boxplot(width=0.1) +
     xlab(cat_var_name) +
-    ylab("Price") +
-    scale_y_continuous(labels = scales::dollar_format(scale = .000001, suffix = "M")) +
+    ylab("Log(Price)") +
+    scale_y_continuous(labels = scales::dollar_format(scale = 1)) +
     theme(legend.position="none")
 }
 
 p <- plot_price_by_cat(df, df$condition, "Condition")
-q <- plot_price_by_cat(df, df$grade, "Grade")
-r <- plot_price_by_cat(df, df$view, "View")
-s <- plot_price_by_cat(df, df$waterfront, "Waterfront")
-t <- plot_price_by_cat(df, df$bedrooms, "Bedrooms")
-u <- plot_price_by_cat(df, df$bath_group, "Bathrooms")
-v <- plot_price_by_cat(df, df$floors, "Floors")
+q <- plot_price_by_cat(df, df$view, "View")
+r <- plot_price_by_cat(df, df$grade.factor, "Grade")
+s <- plot_price_by_cat(df, df$high_grade, "High Grade")
+t <- plot_price_by_cat(df, df$waterfront, "Waterfront")
+u <- plot_price_by_cat(df, df$bed_group, "Bedrooms")
+v <- plot_price_by_cat(df, df$bath_group, "Bathrooms")
+w <- plot_price_by_cat(df, as.factor(df$floors), "Floors")
 
 grid.arrange(grobs=list(p, q, 
                         r, s),
@@ -150,7 +171,7 @@ grid.arrange(grobs=list(p, q,
              top="Price by Categorical Variable") 
 
 grid.arrange(grobs=list(t, u, 
-                        v),
+                        v, w),
              ncol=2,
              top=NULL) 
 ```
@@ -160,16 +181,158 @@ grid.arrange(grobs=list(t, u,
 
 ## Initial Model
 
-```{r, echo=FALSE, results='asis'}
+```{r, echo=FALSE}
 
 # Initial Model
 lm.initial <- lm(price ~ sqft_living, data=df)
-stargazer(lm.initial,
+summary(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.initial <- lm(price ~ sqft_living + sqft_above, data=df)
+summary(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.initial <- lm(price ~ sqft_living + sqft_above + sqft_basement, data=df)
+summary(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.initial <- lm(price ~ sqft_living + sqft_above + has_basement, data=df)
+summary(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.initial <- lm(price ~ sqft_living + sqft_above + age_yrs, data=df)
+summary(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.initial <- lm(price ~ sqft_living + sqft_above + date_built, data=df)
+summary(lm.initial,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + sqft_above + age_yrs + grade, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + sqft_above +  age_yrs + high_grade, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + sqft_above + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + bathrooms + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + bedrooms + bathrooms + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + bedrooms + bathrooms + multistory + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + bedrooms + bathrooms + floors + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + sqft_lot + bedrooms + bathrooms + floors + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ sqft_living + sqft_lot + bedrooms + high_bath + floors + age_yrs + high_grade + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ age_yrs + sqft_living + sqft_lot + bedrooms + grade + high_bath + floors + view, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(price ~ age_yrs + sqft_living + sqft_lot + bedrooms + high_grade + high_bath + floors + view.factor, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(log(price) ~ age_yrs + log(sqft_living) + sqft_lot + bedrooms + high_grade + high_bath + floors + view.factor, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.price <- lm(log(price) ~ age_yrs + log(sqft_living) + high_grade + floors + view.factor, data=df)
+summary(lm.price,
+          header=FALSE, 
+          title="Initial Data Model",
+          report='vc*t')
+
+lm.full <- lm(price ~ ., data=df)
+summary(lm.full,
           header=FALSE, 
           title="Initial Data Model",
           report='vc*t')
 ```
 
+
+```{r, echo=FALSE}
+boxCox(lm.price)
+```
+
+```{r}
+par(mfrow = c(1,3))
+plot(lm.price,c(1,2,4))
+```
+
+
+
+```{r, echo=FALSE}
+vif(lm.price)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(df$sqft_living ,lm.price$residuals, xlab = "sqft_living", ylab = "residuals")
+plot(df$high_grade,lm.price$residuals, xlab = "grade", ylab = "residuals")
+plot(df$view ,lm.price$residuals, xlab = "view", ylab = "residuals")
+```
 # Results and Conclusions
 
 
