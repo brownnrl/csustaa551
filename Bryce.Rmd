@@ -191,5 +191,218 @@ summary(lm_top)
 anova(lm_top)
 ```
 
+```{r}
+library(ggplot2)
+ggplot(data = df, aes( sqft_living,log(price))) + geom_point(color = factor(df$bathrooms)) + theme()
+ggplot(data = df, aes( sqft_living,log(price))) + geom_point(color = factor(df$condition)) + theme()
+
+```
+
+###Model Selection - March 9th###
+
+```{r}
+library(lubridate)
+library(GGally)
+df_mod5 <- read.csv('Seattle.csv')
+df_mod5$date <- ymd(substr(df_mod5$date,1,nchar(df_mod5$date) - 7))
+df_mod5$basement <- ifelse(df_mod5$sqft_basement == 0, 'No Basement','Basement')
+df_mod5$renovated <- ifelse(df_mod5$yr_renovated > 0, 1, 0)
+head(df_mod5,3)
+```
+
+#Taking a look at distribution, correlation, and scatterplots of the variables
+#Excluding categorical indicator variables and first two columns of data
+#Placing price at the end so we can see all correlations and all scatterplots
+
+```{r, fig.height = 6, fig.width = 6}
+columns_for_plot <- c(4:8,10:16,3)
+ggpairs(df_mod5[columns_for_plot],title = "Correlogram of Variables")
+```
+#Scatterplots: Looks like direct relationship with sqft_above, grade, sqft_living, bathrooms, bedrooms
+#Correlations: Top correlation in decending order - sqft_living, grade, sqft_above, bathrooms, view, sqft_basement, bedrooms, etc.
+
+#Going to proceed with adding variables one at a time based upon correlation with price. 
+
+```{r}
+mod1 <- lm(price ~ sqft_living, data = df_mod5)
+summary(mod1)
+```
+
+$R^2 = .5221$
+sqft_living is helpful in the predicting price.
+
+#Adding grade to the model
+```{r}
+mod2 <- lm(price ~ sqft_living + grade, data = df_mod5)
+summary(mod2)
+```
+
+Higher R^2 adjusted, both grade and sqft_living are significant.
+
+#Going to skip placing sqft_above in the model because it is essentially the same variable as sqft_living
+
+#Adding bathrooms
+
+```{r}
+mod3 <- lm(price ~ sqft_living + grade + bathrooms, data = df_mod5)
+summary(mod3)
+```
+#Bathrooms is not significant in this model --> variables added last t-test
+#Adding view to the model
+```{r}
+mod4 <- lm(price ~ sqft_living + grade + view, data = df_mod5)
+summary(mod4)
+```
+#Significant
+#Skipping sqft_basement because not all houses have basements
+#Will try bedrooms
+```{r}
+mod5 <- lm(price ~ sqft_living + grade + view + bedrooms, data = df_mod5)
+summary(mod5)
+```
+#Bedrooms not significant. R^2 barely increased. Going to remove. 
+
+#Going to try to add in indicator variables starting with waterfront
+```{r}
+mod6 <- lm(price ~ sqft_living + grade + view + waterfront, data = df_mod5)
+summary(mod6)
+```
+#Significant to model. Good increase in R^2 Adj.
+
+#Lets try yr_built out of curiousity (No strong reason I can find)
+
+```{r}
+mod7 <- lm(price ~ sqft_living + grade + view + waterfront + yr_built, data = df_mod5)
+summary(mod7)
+```
+
+#Significant and strong increase in R^2 adjusted
+
+#Notice both sqft_living and grade have a strong correlation. Lets try an interaction in the model
+```{r}
+mod8 <- lm(price ~ sqft_living + grade + view + waterfront + yr_built + sqft_living*grade, data = df_mod5)
+summary(mod8)
+```
+#Interaction is helpful to the model. R^2 adjusted increased to ~.71
+
+#Lets check residual plots
+
+```{r}
+par(mfrow = c(1,3))
+plot(mod8,c(1,2,4))
+```
+QQplot is telling us that the residuals are not conforming to a sample from a normal distribution. Looks like very heavy tailed data. Conclude we are not safe assuming that the errors are normally distributed.
+
+Looks like non constant variance, mean not zero, and values with > 2 cooks distance.
+
+
+
+#Durbin watson test
+
+```{r}
+library(car)
+durbinWatsonTest(mod8)
+```
+
+Looks like there may not be serial correlation.
+
+
+```{r}
+plot(mod8$fitted.values, df_mod5$price)
+abline(a = 0, b = 1)
+```
+Non constant variance?
+
+#Notice the right skewed distribution for both price and sqft_living. Possible a logarithm transform for these two variables will help fix our assumptions.
+
+```{r}
+par(mfrow = (c(2,2)))
+plot(density(df_mod5$price))
+plot(density(df_mod5$sqft_living))
+plot(density(log(df_mod5$price)))
+plot(density(log(df_mod5$sqft_living)))
+```
+The logarithm transformations looks like it normalizes the data pretty well.
+
+#applying it in model
+
+```{r}
+mod10 <- lm(log(price) ~ log(sqft_living) + grade + view + waterfront + yr_built + log(sqft_living)*grade, data = df_mod5)
+summary(mod10)
+```
+#Drop in R^2 adjusted. Interaction bordline significant. Waterfront no longer significant
+
+#Remove waterfront
+```{r}
+mod10 <- lm(log(price) ~ log(sqft_living) + grade + view + yr_built + log(sqft_living)*grade, data = df_mod5)
+summary(mod10)
+```
+#Interaction still borderline significant. Lets try removing it.
+
+```{r}
+mod11 <- lm(log(price) ~ log(sqft_living) + grade + view + yr_built, data = df_mod5)
+summary(mod11)
+```
+
+#Interaction removed. All variables significant. R^2 adjusted didnt move.
+
+#Residual plots
+
+```{r}
+par(mfrow = c(1,3))
+plot(mod11,c(1,2,4))
+```
+#Linearity looks good.
+#Cook's distance still there. 
+#Looks like random scatter in residuals vs. fitted.
+#Lets look at what our leverage values are
+```{r}
+hv <- as.matrix(hatvalues(mod11))
+mn <- mean(hatvalues(mod11))
+as.matrix(hv[hv > 2*mn,])
+length(hv[hv > 2*mn,])
+```
+
+#53 leverage points..
+
+#Good or bad?
+#Student Residuals
+```{r}
+stures <- rstudent(mod11)
+plot(stures)
+abline(h=2, lty=2)
+abline(h=-2, lty=2)
+```
+```{r}
+as.matrix(stures[abs(stures) > 2])
+length(stures[abs(stures) > 2])
+```
+#24 outliers. Are they leverage values?
+```{r}
+stures_vals <- as.vector(stures[abs(stures) > 2])
+lev_vals <- as.vector(hv[hv > 2*mn,])
+intersect(lev_vals,stures_vals)
+```
+#Couldnt figure out code but 40, 244, 346, 432, 520 are both leverage values and outliers.
+#244 and 40 both have a large cook's distance as well.
+
+
+#Consider collinearity
+```{r}
+vif(mod11)
+```
+#Looks good.
+
+#Lastly, residuals vs. predictors
+
+```{r}
+par(mfrow = c(2,2))
+plot(log(sqft_living), mod11$residuals)
+plot(grade, mod11$residuals)
+plot(view, mod11$residuals)
+plot(yr_built, mod11$residuals)
+```
+#I'd say it looks like random scatter.
+
 
 
