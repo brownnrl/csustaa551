@@ -264,6 +264,10 @@ summary(mod5)
 
 #Going to try to add in indicator variables starting with waterfront
 ```{r}
+mod61 <- lm(price ~ sqft_living + grade + view + yr_built, data = df_mod5)
+summary(mod61)
+```
+```{r}
 mod6 <- lm(price ~ sqft_living + grade + view + waterfront, data = df_mod5)
 summary(mod6)
 ```
@@ -351,6 +355,7 @@ summary(mod10)
 ```{r}
 mod11 <- lm(log(price) ~ log(sqft_living) + grade + view + yr_built, data = df_mod5)
 summary(mod11)
+anova(mod11)
 ```
 
 #Interaction removed. All variables significant. R^2 adjusted didnt move.
@@ -414,34 +419,115 @@ plot(yr_built, mod11$residuals)
 #I'd say it looks like random scatter.
 
 ###Analysis Section
-The analysis to determine the best model to predict price using the ‘Seattle.csv’ dataset was to analyze the correlations of the predictors variables with price, and to gradually add predictor variables with the highest correlations to the model while assessing model performance. This analysis began with analyzing a correlogram of the dataset, excluding the variables id, date, waterfront, renovated and basement. It was determine id and date would not be helpful in our model to predict price because id does not give any information on the price of a house, and since we are looking at producing a model that can predict housing prices in Seattle in upcoming years, date would not provide us the type of information we need for future values. Waterfront, renovated and basement were indicator variables that were not needed in this visual analysis and will be introduced in the analysis later. 
+To determine the best model to predict price using the ‘Seattle.csv’ dataset was to analyze the correlations of the predictors variables with our response, and to sequentially add predictors to the model while assessing model performance. This analysis began with analyzing a correlogram of the dataset, figure __, excluding id, date, waterfront, renovated and basement. ID and date would not be helpful in our model because id does not give any information on the price of a house, and date would not provide us the type of information we need to predict future houses. The indicator variables waterfront, renovated, and basement were not needed in this visual analysis and will be introduced in the analysis later. 
 
-Looking at the correlogram it was clear that the variables sqft_above, grade, sqft_living, bathrooms, and bedrooms had a direct relationship with our response variable price. This proved to be the case as we considered the correlations of the variables in descending order. Using the correlations of these predictors, we began to build our model with a sequential approach, beginning with the predictor with the highest correlation to price, sqft_living. With a p-value of < 2.2e-16, it was clear that we had strong evidence for a linear association between price and sqft_living. This simple linear regression model explained roughly 52% of the variation in price.
+#Correllogram
 
-We then proceeded to add the variable with the second highest correlation to price, which was grade. Adding grade to the model proved to be helpful, as we noticed a significant p-value for the variables added last test in the summary table.
+Using the correlogram it was clear that the variables sqft_above, grade, sqft_living, bathrooms, and bedrooms had a direct relationship with our response variable price. This proved to be the case as we considered the correlations of the variables in descending order. Using the correlations of these predictors, we began to build our model by adding one variable at a time, and using the variables added last tests to determine significance of the variable in our model, beginning the variable that has the highest correlation with price, sqft_living. As seen in model 1 of table __, it was clear that we had strong evidence for a linear association between price and sqft_living and that we explained roughly 52% of the variation in price.
 
-In the next step of building the model it is important to note that we did not attempt to add ‘sqft_above’ into the model since we determined this variable to be almost identical to ‘sqft_living’, with a correlation value of 0.898 to backup this assumption.
+We then proceeded to add grade to the model. Adding grade to the model proved to be helpful, as we noticed a significant p-value for the variables added last test which was 0.000251. After adding grade to the model, we did not attempt to add ‘sqft_above’ into the model since we determined this variable to be almost identical to ‘sqft_living’, with a correlation value of 0.898 to backup this assumption.
 
-Next we added bathrooms into our model since it had a correlation of 0.575 with price. Adding bathrooms resulted in a p-value of 0.449107 for the variables added last t-test so it was safe to conclude that it was not helpful to our model with sqft_living and grade already applied.
+Next we added bathrooms into our model and received a p-value of 0.449107 for the variables added last t-test so it was safe to conclude that it was not helpful to our model with sqft_living and grade already included. However, our next variable we added to our model, view, did prove to be helpful with a p-value of $2e10^{16}$.
 
-Next we included view into our model and determined view to be helpful in our model, with sqft_living and grade already present. With three variables determine to explained roughly 59% of the variation in price, we looked to try to add bedrooms into the model. It was clear with the results from the summary table that bedrooms hardly explained any more variation in price, and was not helpful in our model so we removed that predictor.
+With three variables determine to explained roughly 59% of the variation in price, we looked to try to add bedrooms into the model. It was clear with the results from the summary table that bedrooms hardly explained any more variation in price, and was not helpful in our model so we removed that predictor.
 
-At this point in our analysis we concluded to stop adding quantitative variables based off of their correlation to price since we wanted to conserve the parsimonious nature of the model. We did want to try the variable yr_built in the model since we believe it was important to attempt to add a variable that represented the age of the house. Adding yr_built into our model proved to be significant with sqft_living, grade and view already present in the model.
+At this point in our analysis we concluded to stop adding quantitative variables based off of their correlation to price since we wanted to conserve the parsimonious nature of the model. We did want to try the variable yr_built in the model since we believed it was important to attempt to add a variable that represented the age of the house. Adding yr_built into our model proved to be significant with sqft_living, grade and view already present in the model.
 
-Next we looked to add indicator variables in our model and see if they would be helpful in explaining the variability in price. Starting with waterfront, we found that this indicator was helpful in our model and increased the amount of variation explained in price, so we decided to keep the variable in our model. 
+Next we looked to add indicator variables in our model and see if they would be helpful in explaining the variability in price. Starting with waterfront, we found that this indicator was helpful in our model and increased the amount of variation explained in price to roughly 0.65. This can be found in model 2 in table __.
 
-It was determined that basement was not helpful in our model in two ways. We sequentially added basement to the model with waterfront already in the model and viewed a large p-value for the variables added last test. We also took waterfront out of the model and added basement to the model with sqft_living, grade and view and found it not to be helpful.
+```{r}
+mod71 <- lm(price ~ sqft_living + grade + view + yr_built + waterfront, data = df_mod5)
+summary(mod71)
+```
 
-With the predictors sqft_living, grade, view and waterfront in our model, we are explaining 65% of the variability in price. At this point we are satisfied with these four predictors being used in our model.
+Adding basement and renovated as indicators to our model, in the same fashion as we added waterfront to the model, ended up not being helpful to our model with sqft_living, grade, view, and yr_built already present. We also added these two indicators, separately, with waterfront in the model, and the were not helpful either.
 
-Our next step in the analysis was to assess the collinearity in this model. When looking at the correlation values between the predictors, it was clear that we had evidence of collinearity between sqft_living and grade. With this knowledge we seeked to assess whether an interaction between these two variables would be helpful to our model and address this collinearity. Adding this interaction term proved to be helpful in our model and increased the variation in priced explained by the model by roughly 5%.
+At this point we are satisfied with the four predictors, sqft_living, grade, view and waterfront being used in our model.
 
-Satisfied with this model, we proceeded to check the diagnostic plots of this model. After review of the diagnostic plots, it was clear we had problems addressing our assumptions of linearity, mean zero for the errors and constant variance of the errors. This can be shown with the fanning out of the points in the residuals vs fitted plot, and the no linearity of the normal QQ plot. We can also see that we have observations with a very large Cook’s Distance, which may be negatively affecting our model. Checking the residuals versus the predicted values confirmed what we saw in the previous three plots and we concluded that our assumptions were violated.
+Before moving on in our analysis, we wanted to ensure that our model doesn't disagree with an alternative analysis built from a full model in that we did not miss any potential predictors that may add to our model's explained variation while offering strong evidence that they linearly associated with the predictor.  To accomplish this, we first compared a model with nearly every predictor with the exception of those predictors that could be eliminated due to their intrinsic nature or prior inspection. For instance, the id field or date of transaction was not considered in the full model.  The following anova table indicated that their may be some predictors which may be linearly associated with the response variable.
 
-To address the violations of our assumptions, we entertained the idea of transforming some of the variables used in the model. We could see from the correlogram that both our response, price, and predictor, sqft_living, had heavily right skewed distributions. We decided to apply a logarithmic transformation on both of these variables and reapply them into our model. Doing so we saw our interaction between the now logarithmic transformation of sqft_living and grade become not helpful to our model. We also, saw that the indicator, waterfront, was no longer helpful to the model. In an effort to satisfy our assumptions of the model, it was decided that removing both of these variables from the model was necessary.
+We then removed the predictors from the nearly full model by examining those with the weakest p-value evidence, and ended up with a reduced model which discarded floors, sqft_above, and sqft_lot.  Comparing the adjusted R^2 value of this reduced model and the R^2 model of the one which we arrived at in our model built up from initial predictors indicates that the additional explained variation is minimal.  Seeking a simpler model, we feel confident that our model will perform accurately after residual error and examination of the diagnostic plots.
 
-The following model with log(price) ~ log(sqft_living) + grade + view + yr_built, we found all significant variables, and that we were able to explain roughly 64% of the variability in the log(price). Assessing the diagnostic plots for this model we found that our assumptions of linearity of the model, errors with mean of zero and constant variance in our residuals were satisfied. We proceeded to conclude this as our final model in predicting price.
+Proceeding with model 2 in our analysis, we needed to assess the correlations between our predictors. When doing this, it was clear that we had evidence of collinearity between sqft_living and grade. With this knowledge we sought to assess whether an interaction between these two variables would be helpful to our model. As seen in model 3 of table __, adding this interaction term proved to be helpful in our model and increased the variation in priced explained by the model to 0.706.
 
-In an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addresses with the client. 
+Satisfied with this model, we proceeded to check the diagnostic plots to check the validity of our assumptions. After review of these plots, it was clear we had problems addressing our assumptions of linearity, mean zero for the errors and constant variance of the errors. This can be shown with the fanning out of the points in the residuals vs fitted plot, and the lack of linearity in the normal QQ plot. We can also see that we have observations with very large Cook’s Distance, which may be negatively affecting our model. Checking the residuals versus the predicted values confirmed what we saw in the previous three plots and we concluded that our assumptions were violated.
+
+```{r}
+par(mfrow = c(1,3))
+plot(mod8,c(1,2,4))
+plot(mod8$fitted.values, mod8$residuals)
+abline(a = 0, b = 1)
+```
+
+To address the violations of our assumptions, we entertained the idea of transforming some of the variables used in the model. We could see from the correlogram that both our response, price, and predictor, sqft_living, had heavily right skewed distributions. We decided to apply a logarithmic transformation on both of these variables and reapply them into our model. Doing so we saw our interaction between the now logarithmic transformation of sqft_living and grade become not helpful to our model. We also, saw that the indicator, waterfront, was no longer helpful to the model. This can be seen in model 4 of table __. In an effort to satisfy our assumptions of the model, it was decided that removing both of these variables from the model was necessary.
+
+
+With model 5 in table __ showing evidence that all variables were helpful in our model, we moved to assess the diagnostic plots. Based off our diagnostic plots we concluded that our assumptions of linearity of the model, errors with mean of zero and constant variance in our residuals were satisfied. We proceeded to conclude this as our final model in predicting price.
+
+```{r}
+par(mfrow = c(1,3))
+plot(mod11,c(1,2,4))
+```
+
+As a quick check we looked into the VIF values for the predictors and determined that we weren't worried about collinearity between the predictors.
+
+```{r}
+vif(mod11)
+```
+
+
+Lastly, in an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addressed with the client. 
+
+```{r}
+stures <- rstudent(mod11)
+plot(stures)
+abline(h=2, lty=2)
+abline(h=-2, lty=2)
+stures_vals <- which(abs(stures) > 2)
+lev_vals <- which(hv > 2*mn)
+intersect(lev_vals,stures_vals)
+```
+
+
+###Results and Conclusions
+
+
+##Final Model##
+
+
+##Fitted Model##
+log(price) = 16.98 + 0.43(log(sqftliving)) + 0.24(grade) + 0.12(view) - 0.0045(yr_built)
+
+##Summary Table##
+```{r}
+summary(mod11)
+```
+
+
+##ANOVA Table##
+```{r}
+anova(mod11)
+```
+
+##Interpretation##
+*log(sqft_living):*
+Holding all else constant, a one percent increase in the living square footage of a home would yield a 0.426% increase in the average price of the home.
+This can be more easily understood as a 10 percent increase in the living square footage of a home would yield a 4.26% increase in the average price of the home.
+
+*grade*
+Holding all else constant, a one level increase in grade will result in a increase in price of 26.67 percent.
+
+*view*
+Holding all else constant, a one level increase in view will result in an increase in price of 12.23 percent.
+
+*yr_built*
+Holding all else constant, a one year increase in the year the house was built will result in a -.45% decrease in housing price.
+
+
+```{r}
+
+```
+
+
 
 
