@@ -166,23 +166,46 @@ stargazer(lm.price.1,
 \newpage
 
 ```{r, include=FALSE}
-lm.nearfull <- lm(price ~ bedrooms + bathrooms + sqft_living + sqft_lot + floors + waterfront + view + condition + grade + sqft_above + yr_built , data=df)
+
+# Top-down model building using ANOVA analysis between full and reduced model.
+
+sci.notation <- function(value) {
+  formatC(value, format = "e", digits = 2) 
+}
+
+lm.nearfull <- lm(price ~ 
+                    bedrooms + 
+                    bathrooms + 
+                    sqft_living + 
+                    sqft_lot + 
+                    floors + 
+                    waterfront + 
+                    view + 
+                    condition + 
+                    grade + 
+                    sqft_above + 
+                    yr_built , data=df)
 anova.1 <- anova(lm.nearfull, lm.price.5)
-lm.reduced <- lm(price ~ bedrooms + bathrooms + sqft_living + waterfront + view + grade + yr_built, data=df)
+anova.1.p.value <-formatC(anova.1$`Pr(>F)`[2], format = "e", digits = 2) 
+lm.reduced <- lm(price ~ bedrooms + 
+                   bathrooms + 
+                   sqft_living + 
+                   waterfront + 
+                   view + 
+                   grade + 
+                   yr_built, data=df)
 anova.2 <- anova(lm.nearfull, lm.reduced)
+anova.2.p.value <-formatC(anova.2$`Pr(>F)`[2], format = "e", digits = 2) 
+# collect adjusted R^2
+nearfull.r.adjusted <- summary(lm.nearfull)
+reduced.r.adjusted <-round(summary(lm.nearfull)$adj.r.squared,3)
+lm5.r.adjusted <-round(summary(lm.price.5)$adj.r.squared,3)
+
 ```
 
-We wanted to ensure that our model doesn't disagree with an alternative analysis built from a full model in that we did not miss any potential predictors that may add to our model's explained variation while offering strong evidence that they linearly associated with the predictor.  To accomplish this, we first compared a model with nearly every predictor with the exception of those predictors that could be eliminated due to their intrinsic nature or prior inspection. For instance, the id field or date of transaction was not considered in the full model.  The following anova table indicated that their may be some predictors which may be linearly associated with the response variable.
+We wanted to ensure that our model doesn't disagree with an alternative analysis built from a full model in that we did not miss any potential predictors that may add to our model's explained variation while offering strong evidence that they linearly associated with the predictor.  To accomplish this, we first compared a model with nearly every predictor with the exception of those predictors that could be eliminated due to their intrinsic nature or prior inspection. For instance, the id field or date of transaction was not considered in the full model.  An ANOVA was conducted between these models with an F-test statistic value of `r round(anova.1$F[2], 3)` and associated p-value `r anova.1.p.value` indicated that their may be some predictors which may be linearly associated with the response variable.
 
-```{r, echo=FALSE}
-anova.1
-```
-
-We then removed the predictors from the nearly full model by examining those with the weakest p-value evidence, and ended up with a reduced model which discarded floors, sqft_above, and sqft_lot.  Comparing the adjusted R^2 value of this reduced model and the R^2 model of the one which we arrived at in our model built up from initial predictors indicates that the additional explained variation is minimal.  Seeking a simpler model, we feel confident that our model will perform accurately after residual error and examination of the diagnostic plots.
-
-```{r, echo=FALSE}
-anova.2
-```
+We then removed the predictors from the nearly full model by examining those with the weakest p-value evidence, and ended up with a reduced model which discarded `floors`, `sqft_above`, and `sqft_lot`.  Comparing the adjusted $R^2$ value of this reduced model of `r reduced.r.adjusted` with the model we arrived out built bottom-up from initial predictors and it's adjusted $R^2$ of `r lm5.r.adjusted` indicates that the additional explained variation is minimal.  Seeking a simpler model, we feel confident that our model will perform accurately after residual error and examination of the diagnostic plots.
 
 
 # Analysis
