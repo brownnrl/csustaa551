@@ -3,15 +3,14 @@ title: "R Notebook"
 output: pdf_document
 author: "Nelson Brown and Bryce Smith"
 header-includes:
+- \usepackage{dcolumn}
+- \usepackage{float}
 - \usepackage{pdflscape}
 - \newcommand{\blandscape}{\begin{landscape}}
 - \newcommand{\elandscape}{\end{landscape}}
 ---
-```{r, echo=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
-```
-
 ```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 library(dplyr)
 library(car)
 library(ggplot2)
@@ -25,6 +24,8 @@ library(stargazer) # Used for latex tables to summarize the data and models
 ```
 
 # Introduction
+
+This case study focuses on creating a linear model 
 
 ```{r, echo=FALSE, results='hide'}
 
@@ -46,11 +47,14 @@ df$has_basement <- as.factor(with(df,
  ))
 ```
 
+
 # Summary Statistics and Graphics
 
 ## Quantitative Values
 
 ```{r, echo=FALSE, results='hide'}
+
+# Define our quantitative values of interest
 df.quant <- df %>% select(price,
                           sqft_living,
                           sqft_lot,
@@ -81,6 +85,19 @@ stargazer(df.quant,
           title="Summary Statistics for Values on Seattle Housing Dataframe")
 ```
 
+```{r, echo=FALSE, results='asis'}
+
+cor.df.quant <- cor(df.quant)
+
+#Correlation Matrix
+#invisible(stargazer(cor.df.quant,
+#                    header=FALSE,
+#                    title="Correlation of Quantiative Values"))
+```
+
+
+
+
 ```{r, echo=FALSE, out.height="800px"}
 
 # Quantitative Data Pairs
@@ -88,13 +105,6 @@ ggpairs(df.quant, progress=FALSE) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-```{r, echo=FALSE, results='asis'}
-
-#Correlation Matrix
-stargazer(cor(df.quant),
-          header=FALSE,
-          title="Correlation of Quantiative Values")
-```
 
 ## Discrete and Categorical Values
 
@@ -125,6 +135,30 @@ grid.arrange(grobs=list(q, r, t,
              top="Price by Categorical Variable") 
 ```
 
+\newpage
+\blandscape
+
+```{r,echo=FALSE, results='asis'}
+lm.price.1 <- lm(formula = price ~ sqft_living, 
+            data = df)
+lm.price.2 <- lm(formula = price ~ sqft_living + grade, 
+            data = df)
+lm.price.3 <- lm(formula = price ~ sqft_living + grade + view, 
+            data = df)
+lm.price.final <- lm(formula = price ~ sqft_living + grade + view + yr_built, 
+            data = df)
+stargazer(lm.price.1, 
+          lm.price.2, 
+          lm.price.3, 
+          lm.price.final,
+          header=FALSE,
+          align=T,
+          label="ModelComparison",
+          title="Model comparison showing iteratively adding predictors with strong supporting evidence")
+```
+
+\elandscape
+\newpage
 
 # Analysis
 

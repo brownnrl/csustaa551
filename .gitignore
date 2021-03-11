@@ -41,3 +41,6 @@ vignettes/*.pdf
 
 # Latex generation files
 *.log
+
+.DS_Store
+

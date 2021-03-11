@@ -1,6 +1,6 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: pdf_notebook
 ---
 
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
@@ -16,3 +16,39 @@ Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by press
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r, echo=FALSE}
+#  Get months
+df$Month <- months(df$date)
+
+#  Get years
+df$Year <- format(df$date,format="%Y")
+
+#  Aggregate 'X2' on months and year and get mean
+agg_price <- aggregate( price ~ Month + Year , df, mean )
+agg_price$effective_date <- as.Date(ISOdate(as.numeric(agg_price$Year), 
+                                    match(agg_price$Month, month.name),
+                                    1))
+ggplot(df, aes(x=date, y=price)) +
+  geom_point() +
+  scale_y_continuous(labels = scales::dollar_format(scale = 1)) +
+  geom_line(data=agg_price, aes(x=effective_date, y=price), color="red", size=2) +
+  ggtitle("Sale Price of Homes in the Seattle Area over Years 2014, 2015")
+```
+```{r,echo=FALSE, results='asis'}
+lm.price.1 <- lm(formula = price ~ sqft_living, 
+            data = df)
+lm.price.2 <- lm(formula = price ~ sqft_living + grade, 
+            data = df)
+lm.price.3 <- lm(formula = log(price) ~ log(sqft_living) + grade + view, 
+            data = df)
+lm.price.4 <- lm(formula = log(price) ~ log(sqft_living) + grade + view + yr_built, 
+            data = df)
+lm.price.final <- lm(formula = log(price) ~ log(sqft_living) + grade + view + yr_built + has_basement, 
+            data = df)
+suppressMessages(stargazer(lm.price.1, 
+                    lm.price.2, 
+                    lm.price.3, 
+                    lm.price.4, 
+                    lm.price.final, header=FALSE, title="Model comparison"))
+```
