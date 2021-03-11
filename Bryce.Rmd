@@ -515,19 +515,37 @@ Holding all else constant, a one percent increase in the living square footage o
 This can be more easily understood as a 10 percent increase in the living square footage of a home would yield a 4.26% increase in the average price of the home.
 
 *grade*
-Holding all else constant, a one level increase in grade will result in a increase in price of 26.67 percent.
+Holding all else constant, a one level increase in grade will result in an increase in average price of 26.67 percent.
 
 *view*
-Holding all else constant, a one level increase in view will result in an increase in price of 12.23 percent.
+Holding all else constant, a one level increase in view will result in an increase in average price of 12.23 percent.
 
 *yr_built*
-Holding all else constant, a one year increase in the year the house was built will result in a -.45% decrease in housing price.
+Holding all else constant, a one year increase in the year the house was built will result in a -.45% decrease in average housing price.
 
+##Discussion##
+Using this model to predict housing price would be beneficial for a stakeholder with the understanding of some key aspects of the model. We will first start with the year the house was built. In our model we have determined that if all else in the model was held constant, the price of a house built closer to present day, then say 5 years beforehand, would produce a lower estimation of price. Lets look at an example of this. Using a house with a living square footage of 2000, housing unit grade of 10, and have been viewed 1 time by a potential buyer, we would see a price of $\$ 839,675.10$ if it was built in 1990. Holding living square footage, grade, and view constant, and we adjust that house to be built in 2000, we would then estimate an average price of $\$ 802,326.9$, result in a decrease in housing price of $\$37,348.24$.
 
 ```{r}
-
+est1 <- exp(predict(mod11, data.frame(sqft_living = 2000,
+                          grade = 10,
+                          view = 1,
+                          yr_built = 1990)))
+est2 <- exp(predict(mod11, data.frame(sqft_living = 2000,
+                          grade = 10,
+                          view = 1,
+                          yr_built = 2000)))
+est1
+est2
+est2 - est1
 ```
 
+```{r}
+plot(df_mod5$yr_built, df_mod5$price)
+check <- lm(price ~ yr_built, data = df_mod5)
+coefficients(check)
+abline(check)
+```
 
 
 
