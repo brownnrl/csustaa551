@@ -141,16 +141,21 @@ grid.arrange(grobs=list(q, r, t,
 ```{r,echo=FALSE, results='asis'}
 lm.price.1 <- lm(formula = price ~ sqft_living, 
             data = df)
-lm.price.2 <- lm(formula = price ~ sqft_living + grade, 
+lm.price.4 <- lm(formula = price ~ sqft_living + grade + view + waterfront, 
             data = df)
-lm.price.3 <- lm(formula = price ~ sqft_living + grade + view, 
+lm.price.5 <- lm(formula = price ~ sqft_living + grade + view + waterfront + yr_built, 
             data = df)
-lm.price.final <- lm(formula = price ~ sqft_living + grade + view + yr_built, 
+lm.price.6 <- lm(formula = price ~ sqft_living + grade + view + waterfront + yr_built + sqft_living*grade, 
+            data = df)
+lm.price.7 <- lm(formula = log(price) ~ log(sqft_living) + grade + view + waterfront + yr_built + log(sqft_living)*grade, 
+            data = df)
+lm.price.8 <- lm(formula = log(price) ~ log(sqft_living) + grade + view + yr_built, 
             data = df)
 stargazer(lm.price.1, 
-          lm.price.2, 
-          lm.price.3, 
-          lm.price.final,
+          lm.price.5,
+          lm.price.6, 
+          lm.price.7, 
+          lm.price.8, 
           header=FALSE,
           align=T,
           label="ModelComparison",
@@ -159,6 +164,26 @@ stargazer(lm.price.1,
 
 \elandscape
 \newpage
+
+```{r, include=FALSE}
+lm.nearfull <- lm(price ~ bedrooms + bathrooms + sqft_living + sqft_lot + floors + waterfront + view + condition + grade + sqft_above + yr_built , data=df)
+anova.1 <- anova(lm.nearfull, lm.price.5)
+lm.reduced <- lm(price ~ bedrooms + bathrooms + sqft_living + waterfront + view + grade + yr_built, data=df)
+anova.2 <- anova(lm.nearfull, lm.reduced)
+```
+
+We wanted to ensure that our model doesn't disagree with an alternative analysis built from a full model in that we did not miss any potential predictors that may add to our model's explained variation while offering strong evidence that they linearly associated with the predictor.  To accomplish this, we first compared a model with nearly every predictor with the exception of those predictors that could be eliminated due to their intrinsic nature or prior inspection. For instance, the id field or date of transaction was not considered in the full model.  The following anova table indicated that their may be some predictors which may be linearly associated with the response variable.
+
+```{r, echo=FALSE}
+anova.1
+```
+
+We then removed the predictors from the nearly full model by examining those with the weakest p-value evidence, and ended up with a reduced model which discarded floors, sqft_above, and sqft_lot.  Comparing the adjusted R^2 value of this reduced model and the R^2 model of the one which we arrived at in our model built up from initial predictors indicates that the additional explained variation is minimal.  Seeking a simpler model, we feel confident that our model will perform accurately after residual error and examination of the diagnostic plots.
+
+```{r, echo=FALSE}
+anova.2
+```
+
 
 # Analysis
 
