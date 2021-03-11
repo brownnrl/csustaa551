@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "STAA 551 Case Study - Home Price Regression Model"
 output: pdf_document
 author: "Nelson Brown and Bryce Smith"
 header-includes:
@@ -10,7 +10,7 @@ header-includes:
 - \newcommand{\elandscape}{\end{landscape}}
 ---
 ```{r, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 library(dplyr)
 library(car)
 library(ggplot2)
@@ -28,6 +28,11 @@ library(stargazer) # Used for latex tables to summarize the data and models
 This case study focuses on creating a linear model 
 
 ```{r, echo=FALSE, results='hide'}
+
+# Helper function for formatting
+sci.notation <- function(value) {
+  formatC(value, format = "e", digits = 2) 
+}
 
 # Read the Data
 df <- read.csv('Seattle.csv', strip.white = TRUE, stringsAsFactors = FALSE)
@@ -85,20 +90,8 @@ stargazer(df.quant,
           title="Summary Statistics for Values on Seattle Housing Dataframe")
 ```
 
-```{r, echo=FALSE, results='asis'}
 
-cor.df.quant <- cor(df.quant)
-
-#Correlation Matrix
-#invisible(stargazer(cor.df.quant,
-#                    header=FALSE,
-#                    title="Correlation of Quantiative Values"))
-```
-
-
-
-
-```{r, echo=FALSE, out.height="800px"}
+```{r, echo=FALSE, out.height="1200px", fig.align="center"}
 
 # Quantitative Data Pairs
 ggpairs(df.quant, progress=FALSE) +
@@ -135,43 +128,74 @@ grid.arrange(grobs=list(q, r, t,
              top="Price by Categorical Variable") 
 ```
 
-\newpage
-\blandscape
 
-```{r,echo=FALSE, results='asis'}
-lm.price.1 <- lm(formula = price ~ sqft_living, 
-            data = df)
-lm.price.4 <- lm(formula = price ~ sqft_living + grade + view + waterfront, 
-            data = df)
-lm.price.5 <- lm(formula = price ~ sqft_living + grade + view + waterfront + yr_built, 
-            data = df)
-lm.price.6 <- lm(formula = price ~ sqft_living + grade + view + waterfront + yr_built + sqft_living*grade, 
-            data = df)
-lm.price.7 <- lm(formula = log(price) ~ log(sqft_living) + grade + view + waterfront + yr_built + log(sqft_living)*grade, 
-            data = df)
-lm.price.8 <- lm(formula = log(price) ~ log(sqft_living) + grade + view + yr_built, 
-            data = df)
-stargazer(lm.price.1, 
-          lm.price.5,
-          lm.price.6, 
-          lm.price.7, 
-          lm.price.8, 
-          header=FALSE,
-          align=T,
-          label="ModelComparison",
-          title="Model comparison showing iteratively adding predictors with strong supporting evidence")
+
+# Analysis
+
+## Bottom-Up Model from Variable Added Last t-test
+
+This analysis began with analyzing a correlogram of the dataset which was presented in figure __.  Since there was a single most correlated predictor `sqft_living` with our response variable `price`, and the second highest predictor `sqft_above` was a directly proportional quantity to `sqft_living` which yielded high colinearity we decided to build a model bottom-up starting with `price` predicted by `sqft_living`.  We would sequentially add predictors to the model while assessing model performance. 
+
+```{r,echo=FALSE, results='hide'}
+# Bottom up model formulation.
+
+lm.price.1 <- lm(formula = price ~ sqft_living, data = df)
+lm.price.2 <- lm(formula = price ~ sqft_living + grade, data=df)
 ```
 
-\elandscape
-\newpage
+As seen in model (1) of table 3 on the next page, it was clear that we had strong evidence for a linear association between price and `sqft_living` and that the adjusted $R^2$ amount of explained variation accounted for roughly 52% of the variation in price.  This would remain throughout our analysis the most significant predictor that we could ascertain contributed to the model.  We then proceeded to add `grade` to the model. Adding `grade` to the model proved to be helpful, as we noticed a significant p-value for the variables added last test which was 0.000251. 
+
+```{r,echo=FALSE,results='hide'}
+lm.price.3.not.included <- lm(formula = price ~ sqft_living + grade + bathrooms, 
+                              data = df)
+lm.3.pvalue <- sci.notation(summary(lm.price.3.not.included)$coefficients[3,4])
+lm.price.4 <- lm(formula = price ~ sqft_living + grade + view, 
+            data = df)
+
+```
+
+Next we added bathrooms into our model and received a p-value of `r lm.3.pvalue` for the variables added last t-test so it was safe to conclude that it was not helpful to our model with `sqft_living` and `grade` already included. However, our next variable we added to our model, `view`, did prove to be helpful with a p-value of 2e-16.
+
+```{r, echo=FALSE,results='hide'}
+lm.price.5 <- lm(formula = price ~ 
+                   sqft_living + 
+                   grade + 
+                   view + 
+                   yr_built,
+            data = df)
+```
+
+The model with these three variables determine an adjusted $R^2$ which explained roughly 59% of the variation.  This model is  shown as model (2) in table 4.  We next looked at bathrooms and bedrooms into the model based on the correlation with price.  `bedrooms` was chosen first as it had only a 0.428 correlation with `grade` versus the 0.740 correlation of `bathrooms` with `grade`. It was clear with the results from the summary table that bedrooms hardly explained any more variation in price, and was not helpful in our model so we removed that predictor.  `bathrooms` showed a similar result and was not included in our analysis.
+
+We did want to try the variable `yr_built` in the model since we believed it was important to attempt to add a variable that represented the age of the house. Adding `yr_built` into our model proved to be significant with `sqft_living`, `grade` and `view` already present in the model.  The results of this model are annotated as model (2) in Table 3.
+
+### Adding Categorical Indicator Predictors
 
 ```{r, include=FALSE}
 
-# Top-down model building using ANOVA analysis between full and reduced model.
+# Adding Categorical Indicator Predictors
+lm.price.5b <- lm(formula = price ~ 
+                   sqft_living + 
+                   grade + 
+                   view + 
+                   yr_built + 
+                   waterfront,
+                  data = df)
+```
 
-sci.notation <- function(value) {
-  formatC(value, format = "e", digits = 2) 
-}
+At this point in our analysis we concluded to stop adding quantitative and quantitative monotonic ordinal variables, and looked at the categorical variables which could be treated as indicator or dummy variables in our model.  Starting with waterfront, we found that this indicator was helpful in our model and increased our adjusted $R^2$ value to approximately 0.65. 
+
+Adding basement and renovated as indicators to our model, in the same fashion as we added waterfront to the model, ended up not being helpful to our model with `sqft_living`, `grade`, `view`, and `yr_built` already present. We also added these two indicators, separately, with `waterfront` in the model, and these predictors added were not helpful either. We were satisfied with the five predictors: `sqft_living`, `grade`, `view`, `yr_built`, and `waterfront` being used in our model.
+
+### Comparison of Bottom-Up Model with Top-Down Model using ANOVA tables
+
+```{r, include=FALSE}
+
+# Top-down model building using ANOVA analysis between a nearly
+# full model and our bottom-up analysis, a nearly full model
+# and a reduced model, and finally comparative metrics between
+# the reduced model and the model built from a bottom-up analysis.
+
 
 lm.nearfull <- lm(price ~ 
                     bedrooms + 
@@ -185,7 +209,7 @@ lm.nearfull <- lm(price ~
                     grade + 
                     sqft_above + 
                     yr_built , data=df)
-anova.1 <- anova(lm.nearfull, lm.price.5)
+anova.1 <- anova(lm.nearfull, lm.price.5b)
 anova.1.p.value <-formatC(anova.1$`Pr(>F)`[2], format = "e", digits = 2) 
 lm.reduced <- lm(price ~ bedrooms + 
                    bathrooms + 
@@ -195,7 +219,7 @@ lm.reduced <- lm(price ~ bedrooms +
                    grade + 
                    yr_built, data=df)
 anova.2 <- anova(lm.nearfull, lm.reduced)
-anova.2.p.value <-formatC(anova.2$`Pr(>F)`[2], format = "e", digits = 2) 
+anova.2.p.value <-round(anova.2$`Pr(>F)`[2], 3) 
 # collect adjusted R^2
 nearfull.r.adjusted <- summary(lm.nearfull)
 reduced.r.adjusted <-round(summary(lm.nearfull)$adj.r.squared,3)
@@ -205,12 +229,68 @@ lm5.r.adjusted <-round(summary(lm.price.5)$adj.r.squared,3)
 
 We wanted to ensure that our model doesn't disagree with an alternative analysis built from a full model in that we did not miss any potential predictors that may add to our model's explained variation while offering strong evidence that they linearly associated with the predictor.  To accomplish this, we first compared a model with nearly every predictor with the exception of those predictors that could be eliminated due to their intrinsic nature or prior inspection. For instance, the id field or date of transaction was not considered in the full model.  An ANOVA was conducted between these models with an F-test statistic value of `r round(anova.1$F[2], 3)` and associated p-value `r anova.1.p.value` indicated that their may be some predictors which may be linearly associated with the response variable.
 
-We then removed the predictors from the nearly full model by examining those with the weakest p-value evidence, and ended up with a reduced model which discarded `floors`, `sqft_above`, and `sqft_lot`.  Comparing the adjusted $R^2$ value of this reduced model of `r reduced.r.adjusted` with the model we arrived out built bottom-up from initial predictors and it's adjusted $R^2$ of `r lm5.r.adjusted` indicates that the additional explained variation is minimal.  Seeking a simpler model, we feel confident that our model will perform accurately after residual error and examination of the diagnostic plots.
+We then removed the predictors from the nearly full model by examining those with the weakest p-value evidence, and ended up with a reduced model which discarded `floors`, `sqft_above`, and `sqft_lot`.  The reduced model when compared with the full model through an ANOVA table had a F-test statistic of `r round(anova.2$F[2], 3)` and associated p-value of `r anova.2.p.value` which gave fair evidence that the removed predictors were not linearly associated with `price`. Comparing the adjusted $R^2$ value of this reduced model of `r reduced.r.adjusted` with the model we arrived out built bottom-up analysis using variable last added t-tests from initial predictors and it's adjusted $R^2$ of `r lm5.r.adjusted` indicates that the additional explained variation is minimal.  
+
+### Exploring Interactions
+
+Proceeding with model 2 in our analysis, we needed to assess the correlations between our predictors. When doing this, it was clear that we had evidence of colinearity between `sqft_living` and `grade`. With this knowledge we sought to assess whether an interaction between these two variables would be helpful to our model. As seen in model (3) in Table 3, adding this interaction term proved to be helpful in our model and increased the variation in `price` explained by the model to 0.706 as expressed in the adjusted $R^2$.  At this point, we moved on to the diagnostic plots and residuals analysis.  Models (4) and (5) in Table 3 will be explained in the following section.
+
+```{r, echo=FALSE, results='hide'}
+
+# Exploring Interactions
+
+lm.price.6 <- lm(formula = price ~ 
+                   sqft_living + 
+                   grade + 
+                   view + 
+                   yr_built + 
+                   waterfront + 
+                   sqft_living*grade, 
+                   data = df)
+
+# Corrections and transformations applied based on diagnostic plots
+# (performed before diagnostic plots as to provide input to table 4
+#  used in the report which we didn't want separated too far from
+#  the bottom-up model building section of analysis)
+
+lm.price.7 <- lm(formula = log(price) ~ 
+                   log(sqft_living) + 
+                   grade +
+                   view + 
+                   yr_built + 
+                   waterfront + 
+                   log(sqft_living)*grade, 
+                   data = df)
+# Final model
+lm.price.8 <- lm(formula = 
+                   log(price) ~ 
+                   log(sqft_living) + 
+                   grade + 
+                   view + 
+                   yr_built, 
+                   data = df)
+lm.price.final <- lm.price.8
+```
 
 
-# Analysis
 
-## Initial Model
+\newpage
+\blandscape
+```{r, results="asis", echo=FALSE}
+stargazer(lm.price.1, 
+          lm.price.5,
+          lm.price.6, 
+          lm.price.7, 
+          lm.price.8, 
+          header=FALSE,
+          align=T,
+          label="ModelComparison",
+          title="Model comparison showing iteratively adding predictors with strong supporting evidence")
+```
+\elandscape
+\newpage
+
+## Diagnostic Plots and Residuals Analysis
 
 ```{r, echo=FALSE, out.height="200px", out.width="250px", fig.align="center"}
 
