@@ -5,13 +5,14 @@ author: "Nelson Brown and Bryce Smith"
 header-includes:
 - \usepackage{dcolumn}
 - \usepackage{float}
+- \usepackage{floatflt}
+- \usepackage[singlelinecheck=false]{caption}
 - \usepackage{pdflscape}
 - \newcommand{\blandscape}{\begin{landscape}}
 - \newcommand{\elandscape}{\end{landscape}}
 ---
 ```{r, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
-library(dplyr)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, dev='pdf')
 library(car)
 library(ggplot2)
 library(grid)
@@ -20,6 +21,7 @@ library(ggthemes)
 library(lubridate)
 library(GGally)
 library(scales)
+library(dplyr)
 library(stargazer) # Used for latex tables to summarize the data and models
 ```
 
@@ -60,7 +62,7 @@ df$has_basement <- as.factor(with(df,
 ```{r, echo=FALSE, results='hide'}
 
 # Define our quantitative values of interest
-df.quant <- df %>% select(price,
+df.quant <- df %>% dplyr::select(price,
                           sqft_living,
                           sqft_lot,
                           bedrooms,
@@ -285,36 +287,28 @@ stargazer(lm.price.1,
           header=FALSE,
           align=T,
           label="ModelComparison",
-          title="Model comparison showing iteratively adding predictors with strong supporting evidence")
+          title="Iteratively Built Model Comparison")
 ```
 \elandscape
 \newpage
 
-## Diagnostic Plots and Residuals Analysis
 
-```{r, echo=FALSE, out.height="200px", out.width="250px", fig.align="center"}
+```{r, include=FALSE}
 
-# Initial Model
-lm.price <- lm(formula = price ~ sqft_living + grade + view + yr_built + has_basement, 
-            data = df)
+# Diagnostic plots applied before logarithm transforms
+png("diagnostics_prior_to_transform.png", height = 350)
+# 2. Create the plot
 par(mfrow = c(1,3))
-plot(lm.price,c(1,2,4))
-```
+plot(lm.price.6,c(1,2,4))
+# 3. Close the file
+dev.off()
+# Box-cox examining most likely model predictor exponent
+png("boxcox.png", height = 350)
+boxCox(lm.price.6, main="Box-Cox Plot of model")
+dev.off()
 
-
-```{r, echo=FALSE, out.height="150px", fig.align="center"}
-boxCox(lm.price, main="Box-Cox Plot of model")
-```
-
-```{r, echo=FALSE, out.height="150px", fig.align="center"}
-par(mfrow = c(1,3))
-lm.price <- lm(formula = log(price) ~ sqft_living + grade + view + yr_built + has_basement, 
-            data = df)
-plot(lm.price,c(1,2,4))
-```
-
-
-```{r, echo=FALSE, out.height="150px", fig.align="center"}
+png("transformations.png", height = 350)
+par(mfrow = c(1,2))
 p <- ggplot(df, aes(x=sqft_living)) + geom_density()
 q <- ggplot(df, aes(x=log(sqft_living))) + geom_density()
 r <- ggplot(df, aes(x=price)) + geom_density()
@@ -323,17 +317,105 @@ grid.arrange(grobs=list(p, q,
                         r, s),
              ncol=2,
              top="Transformations on Skewed Distributions") 
+dev.off()
+
 ```
 
+
+## Diagnostic Plots and Residuals Analysis
+
+\begin{floatingfigure}[r]{.5\textwidth}  
+ \begin{center}
+  \includegraphics[width=.5\textwidth]{diagnostics_prior_to_transform.png}  
+  \caption{Diagnostic Plots} 
+%  \includegraphics[width=.5\textwidth]{transformations.png}  
+%  \caption{Transformations of Skewed Distributions} 
+%  \includegraphics[width=.5\textwidth]{studentresids.png}  
+%  \caption{Externalized Student Residuals} 
+\end{center}
+\end{floatingfigure}
+Satisfied with the model derived up to this point , we proceeded to check the diagnostic plots to check the validity of our assumptions. After review of these plots, it was clear we had problems addressing our assumptions of linearity, mean zero for the errors and constant variance of the errors. This can be shown with the fanning out of the points in the residuals vs fitted plot, and the lack of linearity in the normal QQ plot. We can also see that we have observations with very large Cook’s Distance, which may be negatively affecting our model. Checking the residuals versus the predicted values confirmed what we saw in the previous three plots and we concluded that our assumptions were violated.
+
+To address the violations of our assumptions, we entertained the idea of transforming some of the variables used in the model. We could see from the correlogram that both our response, `price`, and predictor, `sqft_living`, had heavily right skewed distributions. We decided to apply a logarithmic transformation after observing a box-cox plot indicating that the power transformation would be justified. We reapplied these into our model. 
+
+\begin{floatingfigure}[r]{.5\textwidth}  
+ \begin{center}
+  \includegraphics[width=.5\textwidth]{transformations.png}  
+  \caption{Transformations of Skewed Distributions} 
+%  \includegraphics[width=.5\textwidth]{studentresids.png}  
+%  \caption{Externalized Student Residuals} 
+\end{center}
+\end{floatingfigure}
+Doing so we saw our interaction between the now logarithmic transformation of sqft_living and grade become not helpful to our model. We also, saw that the indicator, waterfront, was no longer helpful to the model. This can be seen in model (4) of Table 3. In an effort to satisfy our assumptions of the model, it was decided that removing both of these variables from the model was necessary.  This is shown in our final model (5) of Table 3.
+
+As a quick check we looked into the VIF values for the predictors and determined that we weren't worried about collinearity between the predictors.
 
 ```{r, echo=FALSE, results='asis'}
 # VIF Table
-stargazer(vif(lm.price), title="VIF Values for Price Model", header=FALSE)
+out <- capture.output(stargazer(vif(lm.price.final),
+          title="VIF for Final Price Model",
+          header=FALSE,
+          align=FALSE))
+
+out <- sub(" \\\\centering", "", out)
+cat(out)
 ```
+
+```{r, echo=FALSE, fig.align="center", fig.height=2, fig.width=8, fig.cap="Diagnostic Plots of Final Model"}
+# Student Residuals and Hat Values Computed
+par(mfrow = c(1,4))
+plot(lm.price.final,c(1,2,4))
+stures <- rstudent(lm.price.final)
+plot(stures, main="Student Residuals")
+abline(h=2, lty=2)
+abline(h=-2, lty=2)
+```
+
+Lastly, in an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addressed with the client. 
+
+
+```{r, echo=FALSE, results='asis'}
+# Calculate intersection of student residuals with high leverage
+hv <- as.matrix(hatvalues(lm.price.final))
+mn <- mean(hatvalues(lm.price.final))
+stures_vals <- which(abs(stures) > 2)
+lev_vals <- which(hv > 2*mn)
+index_values <- intersect(lev_vals,stures_vals)
+df.new <- df %>% dplyr::select(price,
+                        sqft_living,
+                        view,
+                        grade,
+                        yr_built)
+stargazer(df.new[index_values,],
+          header=FALSE,
+          title="High Student Residual and Leverage Values",
+          summary=FALSE)
+```
+
+\newpage
 
 # Results and Conclusions
 
+Our final fitted model is given by the following
 
+$$
+\log(\mathrm{price}) = 16.98 + 0.43 \log(\mathrm{sqftliving}) + 0.24\mathrm{grade} + 0.12\mathrm{view} - 0.0045\mathrm{yr\_built}
+$$
+
+*log(sqft_living):*
+Holding all else constant, a one percent increase in the living square footage of a home would yield a 0.426% increase in the average price of the home.
+This can be more easily understood as a 10 percent increase in the living square footage of a home would yield a 4.26% increase in the average price of the home.
+
+*grade*
+Holding all else constant, a one level increase in grade will result in an increase in average price of 26.67 percent.
+
+*view*
+Holding all else constant, a one level increase in view will result in an increase in average price of 12.23 percent.
+
+*yr_built*
+Holding all else constant, a one year increase in the year the house was built will result in a -.45% decrease in average housing price.
+
+Using this model to predict housing price would be beneficial for a stakeholder with the understanding of some key aspects of the model. We will first start with the year the house was built. In our model we have determined that if all else in the model was held constant, the price of a house built closer to present day, then say 5 years beforehand, would produce a lower estimation of price. Lets look at an example of this. Using a house with a living square footage of 2000, housing unit grade of 10, and have been viewed 1 time by a potential buyer, we would see a price of $\$ 839,675.10$ if it was built in 1990. Holding living square footage, grade, and view constant, and we adjust that house to be built in 2000, we would then estimate an average price of $\$ 802,326.9$, result in a decrease in housing price of $\$37,348.24$.
 
 \newpage
 
