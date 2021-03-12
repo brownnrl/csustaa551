@@ -83,9 +83,6 @@ df.quant <- df %>% dplyr::select(price,
                           date)
 ```
 
-
-Summary statistics for these data points where there exist 613 total rows in the dataset with no missing values.  This is shown in Table 1.  This table gives us a summary view of our housing prices where the inter-quartile range had a midspan between \$315k and \$630k.  The minimum value of homes were approximately \$100k, and there were `r sum(df$price >= quantile(df$price, 0.75))` transactions in the upper quartile of `price`.  These homes were built between 1900 and 2015 being the last year our transaction data was collected.
-
 ```{r, echo=FALSE, results='asis'}
 
 # Summarize initial dataframe
@@ -95,6 +92,9 @@ stargazer(df.quant,
           title="Summary Statistics for Values on Seattle Housing Dataframe",
           label="summary-stats")
 ```
+
+Summary statistics for these data points where there exist 613 total rows in the dataset with no missing values.  This is shown in Table 1.  This table gives us a summary view of our housing prices where the inter-quartile range had a midspan between \$315k and \$630k.  The minimum value of homes were approximately \$100k, and there were `r sum(df$price >= quantile(df$price, 0.75))` transactions in the upper quartile of `price`.  These homes were built between 1900 and 2015 being the last year our transaction data was collected.
+
 
 ## Quantitative Values
 
@@ -406,6 +406,8 @@ abline(h=2, lty=2)
 abline(h=-2, lty=2)
 ```
 
+Lastly, in an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addressed with the client. 
+
 ```{r, echo=FALSE, results='asis'}
 # Calculate intersection of student residuals with high leverage
 hv <- as.matrix(hatvalues(lm.price.final))
@@ -423,9 +425,6 @@ stargazer(df.new[index_values,],
           title="High Student Residual and Leverage Values",
           summary=FALSE)
 ```
-
-Lastly, in an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addressed with the client. 
-
 
 # Results and Conclusions
 
