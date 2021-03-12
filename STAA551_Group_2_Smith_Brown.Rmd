@@ -27,9 +27,11 @@ library(stargazer) # Used for latex tables to summarize the data and models
 
 # Introduction
 
-This case study focuses on creating a linear model 
+This case study focuses on creating a regression model based on a data set of transactions provided for the Seattle area in with properties of homes such as their date built, number of bedrooms, square footage of the living space, and other features that will be described in the next section.  We explore the methods of building this model up from those predictors which provide the strongest correlation with our price response variable, removing those predictors which have collinearity with others included in the model, explore interactions, and examine those models which explain the variation in the response.  We perform a diagnostic and residual analysis on the best performing model to ensure it does not violate basic assumptions of the OLS model, and utilize transformations to modify the model to fit within those assumptions at the cost of a marginal amount of explained variation.  Finally, we examine the results of the final model and describe some of the uses and limitations of the model.
 
 ```{r, echo=FALSE, results='hide'}
+
+# SECTION: HEADER AND INTRODUCTION, INITIAL DATA READ
 
 # Helper function for formatting
 sci.notation <- function(value) {
@@ -57,9 +59,9 @@ df$has_basement <- as.factor(with(df,
 
 # Summary Statistics and Graphics
 
-## Quantitative Values
-
 ```{r, echo=FALSE, results='hide'}
+
+# SECTION: SUMMARY STATISTICS AND GRAPHCIS
 
 # Define our quantitative values of interest
 df.quant <- df %>% dplyr::select(price,
@@ -70,18 +72,24 @@ df.quant <- df %>% dplyr::select(price,
                           view,
                           grade,
                           sqft_above,
-                          yr_built)
+                          yr_built,
+                          date)
 ```
+
+Our housing data frame had a number of quantitative predictors.  One set are square footage of features of the house such as `sqft_living` or the amount of total space that can be lived in (sans attic, basement, or garage space), `sqft_lot` or square footage of the entire property, `sqft_above` which is living space above the basement level, and `yr_built` or the year the home was built.  The first few rows of these values are displayed in the table below.
+
 
 ```{r, echo=FALSE, results='asis'}
 
 # Print head of initial dataframe
-stargazer(head(df.quant), 
+stargazer(head(df.quant %>% dplyr::select(-date)), 
           rownames=FALSE, 
           summary=FALSE, 
           header=FALSE, 
           title="First Four Rows for Quantitative Values on Seattlle Housing Dataframe")
 ```
+
+Summary statistics for these data points (there exist 613 total rows in the dataset with no missing values) are shown in Table 2.
 
 ```{r, echo=FALSE, results='asis'}
 
@@ -89,23 +97,37 @@ stargazer(head(df.quant),
 stargazer(df.quant,
           header=FALSE,
           omit.summary.stat=c('N'),
-          title="Summary Statistics for Values on Seattle Housing Dataframe")
+          title="Summary Statistics for Values on Seattle Housing Dataframe",
+          label="summary-stats")
 ```
 
+Text text text.
 
-```{r, echo=FALSE, out.height="1200px", fig.align="center"}
+
+
+## Quantitative Values
+
+Text text text.
+
+```{r, echo=FALSE, fig.height=6, fig.width=10, fig.align="center", fig.cap="Correlogram of Quantitative or Ordinal Predictors and Response Variable"}
+
+# SECTION: QUANTITATIVE VALUES
 
 # Quantitative Data Pairs
 ggpairs(df.quant, progress=FALSE) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
+Text text text.
 
 ## Discrete and Categorical Values
 
-```{r, echo=FALSE}
+Text text text
 
-# Discrete and Categorical Values Section
+```{r, echo=FALSE, fig.height=3, fig.width=7, fig.cap="Violin Plots of Categorical Values Interpreted as Factors"}
+
+# SECTION: DISCRETE AND CATEGORICAL VALUES
+
 plot_price_by_cat <- function(df, cat_var, cat_var_name) {
   ggplot(df, aes(x=cat_var, y=price, fill=cat_var)) +
     scale_colour_solarized("red") +
@@ -113,7 +135,7 @@ plot_price_by_cat <- function(df, cat_var, cat_var_name) {
     geom_boxplot(width=0.1) +
     xlab(cat_var_name) +
     ylab("Price") +
-    scale_y_continuous(labels = scales::dollar_format(scale = 1)) +
+    scale_y_continuous(labels = scales::dollar_format(scale = .000001, suffix="M")) +
     theme(legend.position="none")
 }
 
@@ -130,6 +152,7 @@ grid.arrange(grobs=list(q, r, t,
              top="Price by Categorical Variable") 
 ```
 
+\newpage
 
 
 # Analysis
@@ -139,7 +162,8 @@ grid.arrange(grobs=list(q, r, t,
 This analysis began with analyzing a correlogram of the dataset which was presented in figure __.  Since there was a single most correlated predictor `sqft_living` with our response variable `price`, and the second highest predictor `sqft_above` was a directly proportional quantity to `sqft_living` which yielded high colinearity we decided to build a model bottom-up starting with `price` predicted by `sqft_living`.  We would sequentially add predictors to the model while assessing model performance. 
 
 ```{r,echo=FALSE, results='hide'}
-# Bottom up model formulation.
+
+# SECTION BOTTOM-UP MODEL FROM VARIABLE ADDED LAST t-TEST
 
 lm.price.1 <- lm(formula = price ~ sqft_living, data = df)
 lm.price.2 <- lm(formula = price ~ sqft_living + grade, data=df)
@@ -175,7 +199,8 @@ We did want to try the variable `yr_built` in the model since we believed it was
 
 ```{r, include=FALSE}
 
-# Adding Categorical Indicator Predictors
+# SECTION: ADDING CATEGORICAL INDICATOR PREDICTORS
+
 lm.price.5b <- lm(formula = price ~ 
                    sqft_living + 
                    grade + 
@@ -192,6 +217,8 @@ Adding basement and renovated as indicators to our model, in the same fashion as
 ### Comparison of Bottom-Up Model with Top-Down Model using ANOVA tables
 
 ```{r, include=FALSE}
+
+# SECTION: COMPARISON OF BOTTOM-UP MODEL WITH TOP-DOWN MODEL USING ANOVA
 
 # Top-down model building using ANOVA analysis between a nearly
 # full model and our bottom-up analysis, a nearly full model
@@ -239,7 +266,7 @@ Proceeding with model 2 in our analysis, we needed to assess the correlations be
 
 ```{r, echo=FALSE, results='hide'}
 
-# Exploring Interactions
+# SECTION: EXPLORING INTERACTIONS
 
 lm.price.6 <- lm(formula = price ~ 
                    sqft_living + 
@@ -295,7 +322,12 @@ stargazer(lm.price.1,
 
 ```{r, include=FALSE}
 
-# Diagnostic plots applied before logarithm transforms
+# SECTION: DIAGNOSTIC PLOTS AND RESIDUAL ANALYSIS
+
+# In order to save space, we had to flow some text around these
+# diagnostic figures, but I think it worked well to keep the 
+# figures near their explanation.
+
 png("diagnostics_prior_to_transform.png", height = 350)
 # 2. Create the plot
 par(mfrow = c(1,3))
