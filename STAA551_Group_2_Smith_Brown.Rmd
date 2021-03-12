@@ -406,8 +406,6 @@ abline(h=2, lty=2)
 abline(h=-2, lty=2)
 ```
 
-Lastly, in an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addressed with the client. 
-
 ```{r, echo=FALSE, results='asis'}
 # Calculate intersection of student residuals with high leverage
 hv <- as.matrix(hatvalues(lm.price.final))
@@ -426,9 +424,17 @@ stargazer(df.new[index_values,],
           summary=FALSE)
 ```
 
+Lastly, in an effort to address the values that showed large Cook’s Distance in the diagnostic plots, we compared which leverage points in our model also had large residuals. We found observations that satisfied both these criteria, and concluded that these points needed to be addressed with the client. 
+
+
 # Results and Conclusions
 
-Our final fitted model is given by the following regression equation: $\log(\mathrm{price}) = 16.98 + 0.43 \log(\mathrm{sqftliving}) + 0.24\mathrm{grade} + 0.12\mathrm{view} - 0.0045\mathrm{yr\_built}$$\log(\mathrm{price}) = 16.98 + 0.43 \log(\mathrm{sqftliving}) + 0.24\mathrm{grade} + 0.12\mathrm{view} - 0.0045\mathrm{yr\_built}$.  Full details are available as model (5) in Table 2.  An ANOVA table for this is provided at the end of this section.  This model is likely suited for comparative analysis of home prices and their attributes between 2014 and 2015 in the Seattle area, where one may extend that time period a few months (up to a year) before or after but likely not outside of that spatial extent.  It would likely be useful in creating a representative prediction used for mortgage risk analysis or to inform a negotiated sale price.  Some home buyers or sellers might use this regression equation examine actionable or significant features of their homes with some caveats.
+Our final fitted model is given by the following regression equation:
+
+$$
+\log(\mathrm{price}) = 16.98 + 0.43 \log(\mathrm{sqftliving}) + 0.24\mathrm{grade} + 0.12\mathrm{view} - 0.0045\mathrm{yr\_built}
+$$
+Full details are available as model (5) in Table 2.  An ANOVA table for this is provided at the end of this section.  This model is likely suited for comparative analysis of home prices and their attributes between 2014 and 2015 in the Seattle area, where one may extend that time period a few months (up to a year) before or after but likely not outside of that spatial extent.  It would likely be useful in creating a representative prediction used for mortgage risk analysis or to inform a negotiated sale price.  Some home buyers or sellers might use this regression equation examine actionable or significant features of their homes with some caveats.
 
 The most actionable information from the coefficients of this equation is the logarithm of `sqft_living`.   Holding all else constant, a 10 percent increase in the living square footage of a home would yield a 4.26% increase in the average price of the home.  `grade` and `view` should be used for analysis carefully.  Holding all else constant, a one level increase in `grade` or `view` will result in an increase in average price of 26.67% and 12.23%, respectively.  But likely there are attributes not captured in this model which would make that information actionable.  `grade` is likely a very subjective measure based on hidden varaibles (cost of cabinet remake, or modern/ traditional style) and the number of times a home is viewed is likely dependent on those same hidden varaibles.  This would likely need it's own modelling to ascertain the how homeowners or buyers could make that information actionable, and in the context of this model is likely providing value in it's predictive power after it is known.
 
