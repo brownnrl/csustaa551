@@ -100,8 +100,8 @@ library(tidyverse)
 library(dplyr)
 library(scales)
 tags <- c("[0-1]", "[1-2]","[2-3]", "[3-4]", "[4-6]")
-v <- df %>% select(price, bathrooms)
-vgroup <- as_tibble(v) %>% mutate(tag = case_when(
+v <- df %>% select(bathrooms)
+vgroup <- as_tibble(df$bathrooms) %>% mutate(tag = case_when(
   bathrooms == 0.25|bathrooms == 0.5|bathrooms == 0.75|bathrooms == 1.00 ~ tags[1],
   bathrooms == 1.25|bathrooms == 1.5|bathrooms == 1.75|bathrooms == 2.00 ~ tags[2],
   bathrooms == 2.25|bathrooms == 2.5|bathrooms == 2.75|bathrooms == 3.00 ~ tags[3],
